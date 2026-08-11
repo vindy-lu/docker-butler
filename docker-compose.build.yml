@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: docker.io/vindy-lu/docker-butler:latest
+    image: ghcr.io/vindy-lu/docker-butler:latest
     container_name: docker-butler
     privileged: true          # 管理 Docker 需要特权模式，不能去掉
     pid: host                 # 让"端口占用扫描"能读取宿主监听端口（bridge 网络也能用）

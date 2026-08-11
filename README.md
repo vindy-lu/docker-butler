@@ -66,7 +66,7 @@
 ```yaml
 services:
   docker-butler:
-    image: docker.io/vindy-lu/docker-butler:latest
+    image: ghcr.io/vindy-lu/docker-butler:latest
     container_name: docker-butler
     privileged: true          # 管理 Docker 需要特权模式，不能去掉
     pid: host                 # 让"端口占用扫描"能读取宿主监听端口（bridge 网络也能用）
@@ -103,7 +103,7 @@ docker run -d \
   -e TZ=Asia/Shanghai \
   -e DB_PATH=/data/docker-butler.db \
   -e APP_PORT=8383 \
-  docker.io/vindy-lu/docker-butler:latest
+  ghcr.io/vindy-lu/docker-butler:latest
 ```
 
 > 💡 可选挂载：如需在面板中管理宿主机 Compose 目录，追加
@@ -142,6 +142,9 @@ docker compose -f docker-compose.build.yml up -d --build
 
 - 遇到问题欢迎提 [Issues](https://github.com/vindy-lu/docker-butler/issues)
 - 技术交流 / 部署咨询：QQ **2801156198**
+- 如果这个项目对你有帮助，可以请作者喝杯咖啡 ☕：
+
+<img src="docs/配图/赞赏码.png" alt="微信赞赏码" width="200">
 ## 📚 文档
 
 - [部署手册（完整版）](docs/部署手册.md) — 详细部署步骤、功能使用、FAQ

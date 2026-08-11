@@ -161,4 +161,4 @@ docker compose -f docker-compose.build.yml up -d --build
 
 ## 📄 License
 
-[MIT](LICENSE) © 2026 刘淦城
+[MIT](LICENSE) © 2026 榴柑橙

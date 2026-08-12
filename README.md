@@ -142,9 +142,8 @@ docker compose -f docker-compose.build.yml up -d --build
 
 - 遇到问题欢迎提 [Issues](https://github.com/vindy-lu/docker-butler/issues)
 - 技术交流 / 部署咨询：QQ **2801156198**
-- 如果这个项目对你有帮助，可以请作者喝杯咖啡 ☕：
+- 如果这个项目对你有帮助，也欢迎点个 ⭐ Star 支持一下！
 
-<img src="docs/配图/赞赏码.png" alt="微信赞赏码" width="200">
 ## 📚 文档
 
 - [部署手册（完整版）](docs/部署手册.md) — 详细部署步骤、功能使用、FAQ

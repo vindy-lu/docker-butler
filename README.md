@@ -155,7 +155,7 @@ docker compose -f docker-compose.build.yml up -d --build
 | 拉镜像失败 | 国内网络可先在「镜像管理 → 加速器」配置国内镜像加速器，保存后重启 Docker 服务 |
 | 面板打不开 | `docker ps` 看状态，`docker compose logs -f` 看日志；端口 54321 是否被占用 |
 | 提示 privileged 警告 | 管理其他容器需要特权模式，不能去掉 |
-| 忘记 admin 密码 | `docker compose down -v && docker compose up -d`（会清空配置，慎用） |
+| 忘记 admin 密码 | `docker compose down && rm -rf ./docker-butler-data && docker compose up -d`(清空配置，慎用) |
 | 面板如何升级 | 面板内「本服务」行点「检查更新」→ 有更新后点「更新自己」，自动完成升级 |
 
 ## 📄 License

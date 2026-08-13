@@ -1,0 +1,26 @@
+services:
+  docker-butler:
+    image: ghcr.io/vindy-lu/docker-butler:latest
+    container_name: docker-butler
+    privileged: true          # 管理 Docker 需要特权模式，不能去掉
+    pid: host                 # 让"端口占用扫描"能读取宿主监听端口（bridge 网络也能用）
+    ports:
+      - "54321:8383"          # 宿主机端口:容器内端口 —— 想换端口改左边数字即可（如 55432:8383）
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker-butler-data:/data    # 数据目录（本项目目录下，方便查看/备份）
+      - /etc/docker/daemon.json:/etc/docker/daemon.json   # 镜像加速器设置（可读写，面板内配置）
+      # 下面两个挂载是给面板的"Compose 项目浏览/新建"功能用的（可选，不用可删）：
+      # 宿主机 Docker 项目目录 → 容器内 /host/compose
+      #   飞牛默认 /vol1/1000/Docker；群晖 /volume1/docker；威联通 /share/Container
+      - ${COMPOSE_ROOT:-/vol1/1000/Docker}:/host/compose
+      # 宿主机存储根目录 → 容器内 /host-vol1
+      #   飞牛默认 /vol1；群晖/绿联 /volume1；威联通 /share
+      - ${COMPOSE_VOLUME_ROOT:-/vol1}:/host-vol1
+    environment:
+      - TZ=Asia/Shanghai
+      - DB_PATH=/data/docker-butler.db
+      - APP_PORT=8383         # 容器内监听端口，与 ports 右边保持一致
+      - COMPOSE_ROOT_HOST=${COMPOSE_ROOT:-/vol1/1000/Docker}
+      - COMPOSE_VOLUME_ROOT_HOST=${COMPOSE_VOLUME_ROOT:-/vol1}
+    restart: unless-stopped

@@ -75,6 +75,7 @@ def _resolve_target(target: str) -> tuple:
     target = _host_path(target)
 
     if target.startswith("/"):
+<<<<<<< HEAD
         # 宿主机绝对路径：允许 COMPOSE_ROOT_HOST（浏览树根）和 COMPOSE_VOLUME_ROOT_HOST（存储根）两个挂载范围
         host_dir = target
         root_host = COMPOSE_ROOT_HOST.rstrip("/")
@@ -83,6 +84,12 @@ def _resolve_target(target: str) -> tuple:
         in_vol = host_dir == vol_host or host_dir.startswith(vol_host + os.sep)
         if not (in_root or in_vol):
             return "", "", "", f"只支持 {root_host} 或 {vol_host} 下的目录（当前: {host_dir}）"
+=======
+        # 宿主机绝对路径
+        host_dir = target
+        if not host_dir.startswith(COMPOSE_VOLUME_ROOT_HOST):
+            return "", "", "", f"只支持 {COMPOSE_VOLUME_ROOT_HOST} 下的目录（当前: {host_dir}）"
+>>>>>>> origin/main
         project_dir = _container_path(host_dir)
         return project_dir, host_dir, host_dir, ""
     else:

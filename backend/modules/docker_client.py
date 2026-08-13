@@ -270,8 +270,18 @@ def list_containers(all: bool = True) -> list[dict]:
         try:
             is_self = c.name in SELF_CONTAINER_NAMES
 
+<<<<<<< HEAD
             # 解析端口映射（仅 IPv4，过滤 IPv6 双栈重复项）
             ports = _parse_container_ports(c)
+=======
+            # 解析端口映射
+            ports = []
+            if c.attrs.get("NetworkSettings", {}).get("Ports"):
+                for port_key, bindings in c.attrs["NetworkSettings"]["Ports"].items():
+                    if bindings:
+                        for b in bindings:
+                            ports.append(f"{b.get('HostIp', '0.0.0.0')}:{b.get('HostPort', '')}->{port_key}")
+>>>>>>> origin/main
 
             # 获取镜像名（只取repository:tag部分）
             image_name = ""
@@ -324,8 +334,18 @@ def get_container(container_id: str) -> Optional[dict]:
     except docker.errors.NotFound:
         return None
 
+<<<<<<< HEAD
     # 解析端口映射（仅 IPv4，过滤 IPv6 双栈重复项）
     ports = _parse_container_ports(c)
+=======
+    # 解析端口映射
+    ports = []
+    if c.attrs.get("NetworkSettings", {}).get("Ports"):
+        for port_key, bindings in c.attrs["NetworkSettings"]["Ports"].items():
+            if bindings:
+                for b in bindings:
+                    ports.append(f"{b.get('HostIp', '0.0.0.0')}:{b.get('HostPort', '')}->{port_key}")
+>>>>>>> origin/main
 
     # 获取镜像名
     image_name = ""
@@ -1104,7 +1124,10 @@ def list_compose_projects() -> list[dict]:
 
         # 计算运行时长（取最早启动的容器）
         uptime_seconds = 0
+<<<<<<< HEAD
         memory_usage = 0
+=======
+>>>>>>> origin/main
         for c_info in p["containers"]:
             try:
                 c = client.containers.get(c_info["full_id"])
@@ -1115,6 +1138,7 @@ def list_compose_projects() -> list[dict]:
                         sec = int((datetime.now(timezone.utc) - start_dt).total_seconds())
                         if uptime_seconds == 0 or sec < uptime_seconds:
                             uptime_seconds = sec
+<<<<<<< HEAD
                     # 聚合内存占用（运行中容器）
                     try:
                         s = c.stats(stream=False)
@@ -1129,6 +1153,11 @@ def list_compose_projects() -> list[dict]:
                 pass
         p["uptime_seconds"] = max(uptime_seconds, 0)
         p["memory_usage"] = memory_usage
+=======
+            except Exception:
+                pass
+        p["uptime_seconds"] = max(uptime_seconds, 0)
+>>>>>>> origin/main
         result.append(p)
 
     status_order = {"running": 0, "partial": 1, "stopped": 2}

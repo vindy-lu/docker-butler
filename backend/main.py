@@ -1,6 +1,10 @@
 """Docker Butler - Docker容器调度管理 FastAPI主应用"""
 
+<<<<<<< HEAD
 APP_VERSION = "2.7.0"
+=======
+APP_VERSION = "2.6.1"
+>>>>>>> origin/main
 
 import asyncio
 import json

@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -270,18 +271,8 @@ def list_containers(all: bool = True) -> list[dict]:
         try:
             is_self = c.name in SELF_CONTAINER_NAMES
 
-<<<<<<< HEAD
             # 解析端口映射（仅 IPv4，过滤 IPv6 双栈重复项）
             ports = _parse_container_ports(c)
-=======
-            # 解析端口映射
-            ports = []
-            if c.attrs.get("NetworkSettings", {}).get("Ports"):
-                for port_key, bindings in c.attrs["NetworkSettings"]["Ports"].items():
-                    if bindings:
-                        for b in bindings:
-                            ports.append(f"{b.get('HostIp', '0.0.0.0')}:{b.get('HostPort', '')}->{port_key}")
->>>>>>> origin/main
 
             # 获取镜像名（只取repository:tag部分）
             image_name = ""
@@ -334,18 +325,8 @@ def get_container(container_id: str) -> Optional[dict]:
     except docker.errors.NotFound:
         return None
 
-<<<<<<< HEAD
     # 解析端口映射（仅 IPv4，过滤 IPv6 双栈重复项）
     ports = _parse_container_ports(c)
-=======
-    # 解析端口映射
-    ports = []
-    if c.attrs.get("NetworkSettings", {}).get("Ports"):
-        for port_key, bindings in c.attrs["NetworkSettings"]["Ports"].items():
-            if bindings:
-                for b in bindings:
-                    ports.append(f"{b.get('HostIp', '0.0.0.0')}:{b.get('HostPort', '')}->{port_key}")
->>>>>>> origin/main
 
     # 获取镜像名
     image_name = ""
@@ -1104,6 +1085,7 @@ def list_compose_projects() -> list[dict]:
                 "image": image_name,
                 "service": service,
                 "ports": _parse_container_ports(c),
+                "started_at": c.attrs.get("State", {}).get("StartedAt", ""),
             })
         except Exception as e:
             logger.warning(f"解析 Compose 容器 {getattr(c, 'name', 'unknown')} 失败: {e}")
@@ -1122,42 +1104,43 @@ def list_compose_projects() -> list[dict]:
         else:
             p["status"] = "partial"
 
-        # 计算运行时长（取最早启动的容器）
+        # 计算运行时长（取最早启动的容器）和内存占用（并发取 stats，避免串行卡列表）
         uptime_seconds = 0
-<<<<<<< HEAD
-        memory_usage = 0
-=======
->>>>>>> origin/main
+        running_ids = [c_info["full_id"] for c_info in p["containers"] if c_info["status"] == "running"]
+
         for c_info in p["containers"]:
+            started_at = c_info.get("started_at", "")
+            if started_at and started_at != "0001-01-01T00:00:00Z":
+                try:
+                    start_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                    sec = int((datetime.now(timezone.utc) - start_dt).total_seconds())
+                    if uptime_seconds == 0 or sec < uptime_seconds:
+                        uptime_seconds = sec
+                except Exception:
+                    pass
+
+        def _fetch_mem(full_id: str) -> int:
+            """并发取单个容器内存占用"""
             try:
-                c = client.containers.get(c_info["full_id"])
-                if c.status == "running":
-                    started_at = c.attrs.get("State", {}).get("StartedAt", "")
-                    if started_at and started_at != "0001-01-01T00:00:00Z":
-                        start_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
-                        sec = int((datetime.now(timezone.utc) - start_dt).total_seconds())
-                        if uptime_seconds == 0 or sec < uptime_seconds:
-                            uptime_seconds = sec
-<<<<<<< HEAD
-                    # 聚合内存占用（运行中容器）
-                    try:
-                        s = c.stats(stream=False)
-                        if isinstance(s, dict):
-                            mem = s.get("memory_stats", {}).get("usage", 0) or 0
-                        else:
-                            mem = next(iter(s), {}).get("memory_stats", {}).get("usage", 0) or 0
-                        memory_usage += mem
-                    except Exception:
-                        pass
+                c = client.containers.get(full_id)
+                if c.status != "running":
+                    return 0
+                s = c.stats(stream=False)
+                if isinstance(s, dict):
+                    mem = s.get("memory_stats", {}).get("usage", 0) or 0
+                else:
+                    mem = next(iter(s), {}).get("memory_stats", {}).get("usage", 0) or 0
+                return mem
             except Exception:
-                pass
+                return 0
+
+        memory_usage = 0
+        if running_ids:
+            # 并发取内存（每容器 1-2s 的 stats 调用并行执行，总耗时≈单个耗时）
+            with ThreadPoolExecutor(max_workers=min(10, len(running_ids))) as pool:
+                memory_usage = sum(pool.map(_fetch_mem, running_ids))
         p["uptime_seconds"] = max(uptime_seconds, 0)
         p["memory_usage"] = memory_usage
-=======
-            except Exception:
-                pass
-        p["uptime_seconds"] = max(uptime_seconds, 0)
->>>>>>> origin/main
         result.append(p)
 
     status_order = {"running": 0, "partial": 1, "stopped": 2}

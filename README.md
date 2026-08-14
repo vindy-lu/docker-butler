@@ -157,6 +157,7 @@ docker compose -f docker-compose.build.yml up -d --build
 | 提示 privileged 警告 | 管理其他容器需要特权模式，不能去掉 |
 | 忘记 admin 密码 | `docker compose down && rm -rf ./docker-butler-data && docker compose up -d`(清空配置，慎用) |
 | 面板如何升级 | 面板内「本服务」行点「检查更新」→ 有更新后点「更新自己」，自动完成升级 |
+| 项目详情读不到 YAML（如 1Panel 创建的项目） | 该宿主目录不在默认挂载范围内。docker butler 支持 `EXTRA_MOUNTS` 环境变量映射额外目录：compose 加挂载 `- /宿主机目录:/host/xxx` 并设 `EXTRA_MOUNTS=/宿主机目录:/host/xxx`。非 snap 环境直接挂；snap 版 Docker 因沙箱限制 `/opt` 等目录只读，需先宿主机执行 `mount --bind` 把目录绑到 `$HOME` 下再挂 |
 | Snap 版 Docker（Ubuntu 预装）部署失败 | Snap Docker 跑在沙箱里，**只能读写 `$HOME` 目录**（`/opt`、`/var/lib` 只读）。compose 里的数据目录/项目目录必须放 home 下（如 `/home/用户名/docker-butler/`），且「更新自己」要求 compose 文件本身也在 home 下（不能放 `/opt/1panel/...` 之类），否则自更新报 `read-only file system` |
 
 ## 📄 License

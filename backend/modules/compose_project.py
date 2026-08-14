@@ -27,6 +27,24 @@ COMPOSE_ROOT_HOST = os.environ.get("COMPOSE_ROOT_HOST", COMPOSE_ROOT)
 COMPOSE_VOLUME_ROOT = os.environ.get("COMPOSE_VOLUME_ROOT", "/host-vol1")
 COMPOSE_VOLUME_ROOT_HOST = os.environ.get("COMPOSE_VOLUME_ROOT_HOST", "/vol1")
 
+# 额外挂载映射（解决 1Panel 等宿主目录不在默认挂载范围内的问题）
+# 格式："宿主机路径:容器内路径;宿主机路径:容器内路径"（分号分隔多组）
+# 例：EXTRA_MOUNTS="/opt/1panel/docker/compose:/host/1panel-compose"
+# snap 版 Docker 需先在宿主机 mount --bind 到 $HOME 下再挂载（/opt 对 snap 只读）
+_EXTRA_MOUNTS_RAW = os.environ.get("EXTRA_MOUNTS", "").strip()
+EXTRA_MOUNTS: list[tuple[str, str]] = []
+if _EXTRA_MOUNTS_RAW:
+    for pair in _EXTRA_MOUNTS_RAW.split(";"):
+        pair = pair.strip()
+        if not pair:
+            continue
+        if ":" in pair:
+            host_p, cont_p = pair.split(":", 1)
+            host_p = host_p.strip().rstrip("/")
+            cont_p = cont_p.strip().rstrip("/")
+            if host_p and cont_p:
+                EXTRA_MOUNTS.append((host_p, cont_p))
+
 
 def _container_path(host_path: str) -> str:
     """宿主机绝对路径 → 容器内路径（挂载映射），支持根路径自身（如 /vol1）"""
@@ -39,6 +57,12 @@ def _container_path(host_path: str) -> str:
         return COMPOSE_ROOT + host_path[len(COMPOSE_ROOT_HOST):]
     if host_path.startswith(COMPOSE_VOLUME_ROOT_HOST + os.sep):
         return COMPOSE_VOLUME_ROOT + host_path[len(COMPOSE_VOLUME_ROOT_HOST):]
+    # 额外挂载映射（EXTRA_MOUNTS，按最长前缀优先匹配）
+    for host_p, cont_p in sorted(EXTRA_MOUNTS, key=lambda x: len(x[0]), reverse=True):
+        if host_path == host_p:
+            return cont_p
+        if host_path.startswith(host_p + os.sep):
+            return cont_p + host_path[len(host_p):]
     # 无法映射（容器内路径原样返回，兼容直接传容器内路径）
     return host_path
 
@@ -54,6 +78,12 @@ def _host_path(container_path: str) -> str:
         return COMPOSE_ROOT_HOST + container_path[len(COMPOSE_ROOT):]
     if container_path.startswith(COMPOSE_VOLUME_ROOT + os.sep):
         return COMPOSE_VOLUME_ROOT_HOST + container_path[len(COMPOSE_VOLUME_ROOT):]
+    # 额外挂载映射反方向（EXTRA_MOUNTS，按最长前缀优先匹配）
+    for host_p, cont_p in sorted(EXTRA_MOUNTS, key=lambda x: len(x[1]), reverse=True):
+        if container_path == cont_p:
+            return host_p
+        if container_path.startswith(cont_p + os.sep):
+            return host_p + container_path[len(cont_p):]
     # 无法映射（已是宿主机路径则原样返回）
     return container_path
 
@@ -75,7 +105,6 @@ def _resolve_target(target: str) -> tuple:
     target = _host_path(target)
 
     if target.startswith("/"):
-<<<<<<< HEAD
         # 宿主机绝对路径：允许 COMPOSE_ROOT_HOST（浏览树根）和 COMPOSE_VOLUME_ROOT_HOST（存储根）两个挂载范围
         host_dir = target
         root_host = COMPOSE_ROOT_HOST.rstrip("/")
@@ -84,12 +113,6 @@ def _resolve_target(target: str) -> tuple:
         in_vol = host_dir == vol_host or host_dir.startswith(vol_host + os.sep)
         if not (in_root or in_vol):
             return "", "", "", f"只支持 {root_host} 或 {vol_host} 下的目录（当前: {host_dir}）"
-=======
-        # 宿主机绝对路径
-        host_dir = target
-        if not host_dir.startswith(COMPOSE_VOLUME_ROOT_HOST):
-            return "", "", "", f"只支持 {COMPOSE_VOLUME_ROOT_HOST} 下的目录（当前: {host_dir}）"
->>>>>>> origin/main
         project_dir = _container_path(host_dir)
         return project_dir, host_dir, host_dir, ""
     else:
@@ -225,7 +248,9 @@ def browse_compose_dirs(path: str = "") -> dict:
     parent = ""
     if host_current and host_current != "/":
         parent_host = os.path.dirname(host_current)
-        in_range = (parent_host.startswith(COMPOSE_ROOT_HOST) or parent_host.startswith(COMPOSE_VOLUME_ROOT_HOST)) if parent_host != "/" else False
+        # 默认挂载范围 + 额外挂载（EXTRA_MOUNTS）都在允许上跳的范围内
+        in_extra = any(parent_host.startswith(host_p) for host_p, _ in EXTRA_MOUNTS)
+        in_range = (parent_host.startswith(COMPOSE_ROOT_HOST) or parent_host.startswith(COMPOSE_VOLUME_ROOT_HOST) or in_extra) if parent_host != "/" else False
         if in_range:
             parent_container = _container_path(parent_host)
             if Path(parent_container).is_dir():

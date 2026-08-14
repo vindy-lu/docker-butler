@@ -1104,10 +1104,8 @@ def list_compose_projects() -> list[dict]:
         else:
             p["status"] = "partial"
 
-        # 计算运行时长（取最早启动的容器）和内存占用（并发取 stats，避免串行卡列表）
+        # 计算运行时长（取最早启动的容器；内存占用由 /api/compose/stats 异步填充，避免拖慢列表）
         uptime_seconds = 0
-        running_ids = [c_info["full_id"] for c_info in p["containers"] if c_info["status"] == "running"]
-
         for c_info in p["containers"]:
             started_at = c_info.get("started_at", "")
             if started_at and started_at != "0001-01-01T00:00:00Z":
@@ -1118,29 +1116,8 @@ def list_compose_projects() -> list[dict]:
                         uptime_seconds = sec
                 except Exception:
                     pass
-
-        def _fetch_mem(full_id: str) -> int:
-            """并发取单个容器内存占用"""
-            try:
-                c = client.containers.get(full_id)
-                if c.status != "running":
-                    return 0
-                s = c.stats(stream=False)
-                if isinstance(s, dict):
-                    mem = s.get("memory_stats", {}).get("usage", 0) or 0
-                else:
-                    mem = next(iter(s), {}).get("memory_stats", {}).get("usage", 0) or 0
-                return mem
-            except Exception:
-                return 0
-
-        memory_usage = 0
-        if running_ids:
-            # 并发取内存（每容器 1-2s 的 stats 调用并行执行，总耗时≈单个耗时）
-            with ThreadPoolExecutor(max_workers=min(10, len(running_ids))) as pool:
-                memory_usage = sum(pool.map(_fetch_mem, running_ids))
         p["uptime_seconds"] = max(uptime_seconds, 0)
-        p["memory_usage"] = memory_usage
+        p["memory_usage"] = 0
         result.append(p)
 
     status_order = {"running": 0, "partial": 1, "stopped": 2}
@@ -1598,6 +1575,49 @@ def get_compose_project_stats(project_name: str) -> Optional[dict]:
 # ============ 自身管理（展示自己 / 更新自己） ============
 
 SELF_UPDATER_NAME = "docker-butler-self-updater"
+
+
+def get_all_compose_memory() -> dict:
+    """批量获取所有 Compose 项目的内存占用（并发取 stats，用于列表页内存列异步填充）"""
+    client = get_client()
+    try:
+        containers = client.containers.list(all=True)
+    except Exception as e:
+        logger.warning(f"批量取 Compose 内存失败: {e}")
+        return {}
+
+    # 运行中的 compose 容器: (项目名, 容器对象)
+    running = []
+    for c in containers:
+        try:
+            labels = c.attrs.get("Config", {}).get("Labels") or {}
+            project = labels.get("com.docker.compose.project")
+            if project and c.status == "running":
+                running.append((project, c))
+        except Exception:
+            continue
+
+    if not running:
+        return {}
+
+    def _fetch_mem(item) -> tuple:
+        project, c = item
+        try:
+            s = c.stats(stream=False)
+            if isinstance(s, dict):
+                mem = s.get("memory_stats", {}).get("usage", 0) or 0
+            else:
+                mem = next(iter(s), {}).get("memory_stats", {}).get("usage", 0) or 0
+            return project, mem
+        except Exception:
+            return project, 0
+
+    memory_map: dict[str, int] = {}
+    # 并发取内存（每容器 1-2s 的 stats 调用并行执行，总耗时≈单个耗时）
+    with ThreadPoolExecutor(max_workers=min(10, len(running))) as pool:
+        for project, mem in pool.map(_fetch_mem, running):
+            memory_map[project] = memory_map.get(project, 0) + mem
+    return memory_map
 
 
 def restart_self() -> dict:

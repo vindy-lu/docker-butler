@@ -2862,6 +2862,19 @@ const app = createApp({
         }
       } catch (e) { console.error('加载 Compose 项目失败:', e); ElementPlus.ElMessage.error('获取 Compose 项目请求失败'); }
       composeLoading.value = false;
+      loadComposeStats();
+    }
+    async function loadComposeStats() {
+      try {
+        const res = await apiFetch('/api/compose/stats');
+        const data = await res.json();
+        if (data.success && data.data) {
+          const memMap = data.data;
+          for (const p of composeProjects.value) {
+            if (memMap[p.name] != null) p.memory_usage = memMap[p.name];
+          }
+        }
+      } catch (e) { console.error('异步加载 Compose 内存失败:', e); }
     }
     async function handleComposeAction(row, action) {
       if (action === 'update') { handleComposeUpdate(row); return; }

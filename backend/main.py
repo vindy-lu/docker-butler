@@ -1,10 +1,6 @@
 """Docker Butler - Docker容器调度管理 FastAPI主应用"""
 
-<<<<<<< HEAD
 APP_VERSION = "2.7.0"
-=======
-APP_VERSION = "2.6.1"
->>>>>>> origin/main
 
 import asyncio
 import json
@@ -525,6 +521,17 @@ async def get_all_containers_stats():
         return {"success": True, "data": stats_map}
     except Exception as e:
         logger.error(f"批量获取容器统计失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/compose/stats")
+async def get_all_compose_stats():
+    """批量获取所有 Compose 项目的内存占用（并行获取，用于列表页内存列异步填充）"""
+    try:
+        memory_map = await asyncio.to_thread(docker_client.get_all_compose_memory)
+        return {"success": True, "data": memory_map}
+    except Exception as e:
+        logger.error(f"批量获取 Compose 内存失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -79,6 +79,15 @@ services:
       # 下面两个挂载是给面板的"Compose 项目浏览/新建"功能用的（可选，不用可删）：
       - ${COMPOSE_ROOT:-/vol1/1000/Docker}:/host/compose   # 宿主机 Docker 项目目录
       - ${COMPOSE_VOLUME_ROOT:-/vol1}:/host-vol1           # 宿主机存储根目录
+      # ── 额外目录挂载（可选）─────────────────────────────────────────────
+      # 想让面板能看到"默认挂载范围之外"的 Compose 项目（如 1Panel 创建的
+      # /opt/1panel/docker/compose 下的项目），把该目录也挂进来 + 配 EXTRA_MOUNTS：
+      #   - /opt/1panel/docker/compose:/host/1panel-compose
+      #   并在 environment 里加： EXTRA_MOUNTS=/opt/1panel/docker/compose:/host/1panel-compose
+      # 多个目录用分号分隔：EXTRA_MOUNTS=/目录A:/host/a;/目录B:/host/b
+      # snap 版 Docker（Ubuntu 预装）注意：/opt 等目录对 snap 只读，需先在宿主机
+      # 执行 mount --bind 把目录绑到 $HOME 下，再挂 $HOME 下的路径
+      # ────────────────────────────────────────────────────────────────────
     environment:
       - TZ=Asia/Shanghai
       - DB_PATH=/data/docker-butler.db
@@ -162,4 +171,4 @@ docker compose -f docker-compose.build.yml up -d --build
 
 ## 📄 License
 
-[MIT](LICENSE) © 2026 榴柑橙（刘淦城）
+[MIT](LICENSE) © 2026 榴柑橙（40091650@qq.com）

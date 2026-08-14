@@ -243,8 +243,10 @@ def _parse_container_ports(c) -> list[str]:
     """解析容器端口映射为 ['0.0.0.0:8080->80/tcp', ...]（仅 IPv4，过滤 IPv6 双栈重复项）"""
     ports = []
     try:
-        if c.attrs.get("NetworkSettings", {}).get("Ports"):
-            for port_key, bindings in c.attrs["NetworkSettings"]["Ports"].items():
+        # 第一来源：NetworkSettings.Ports（运行时实际生效的绑定）
+        net_ports = c.attrs.get("NetworkSettings", {}).get("Ports") or {}
+        if net_ports:
+            for port_key, bindings in net_ports.items():
                 if bindings:
                     for b in bindings:
                         host_ip = b.get("HostIp", "0.0.0.0") or "0.0.0.0"
@@ -252,6 +254,19 @@ def _parse_container_ports(c) -> list[str]:
                         if host_ip == "::" or host_ip.startswith("::"):
                             continue
                         ports.append(f"{host_ip}:{b.get('HostPort', '')}->{port_key}")
+        # 第二来源（兜底）：HostConfig.PortBindings（配置层，NetworkSettings 为空时用）
+        # 结构 {"25600/tcp": [{"HostIp":"","HostPort":"64323"}]}
+        if not ports:
+            port_bindings = c.attrs.get("HostConfig", {}).get("PortBindings") or {}
+            for port_key, bindings in port_bindings.items():
+                if bindings:
+                    for b in bindings:
+                        host_ip = b.get("HostIp", "") or "0.0.0.0"
+                        if host_ip == "::" or host_ip.startswith("::"):
+                            continue
+                        host_port = b.get("HostPort", "")
+                        if host_port:
+                            ports.append(f"{host_ip}:{host_port}->{port_key}")
     except Exception:
         pass
     return ports

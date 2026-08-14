@@ -79,15 +79,9 @@ services:
       # 下面两个挂载是给面板的"Compose 项目浏览/新建"功能用的（可选，不用可删）：
       - ${COMPOSE_ROOT:-/vol1/1000/Docker}:/host/compose   # 宿主机 Docker 项目目录
       - ${COMPOSE_VOLUME_ROOT:-/vol1}:/host-vol1           # 宿主机存储根目录
-      # ── 额外目录挂载（可选）─────────────────────────────────────────────
-      # 想让面板能看到"默认挂载范围之外"的 Compose 项目（如 1Panel 创建的
-      # /opt/1panel/docker/compose 下的项目），把该目录也挂进来 + 配 EXTRA_MOUNTS：
-      #   - /opt/1panel/docker/compose:/host/1panel-compose
-      #   并在 environment 里加： EXTRA_MOUNTS=/opt/1panel/docker/compose:/host/1panel-compose
-      # 多个目录用分号分隔：EXTRA_MOUNTS=/目录A:/host/a;/目录B:/host/b
-      # snap 版 Docker（Ubuntu 预装）注意：/opt 等目录对 snap 只读，需先在宿主机
-      # 执行 mount --bind 把目录绑到 $HOME 下，再挂 $HOME 下的路径
-      # ────────────────────────────────────────────────────────────────────
+      # 想让面板读取默认范围外的 Compose 项目（如 1Panel 的 /opt/1panel/docker/compose）？
+      # 把该目录挂进来 + 配 EXTRA_MOUNTS，见文末「常见问题」第 8 条
+      # - /opt/1panel/docker/compose:/host/1panel-compose
     environment:
       - TZ=Asia/Shanghai
       - DB_PATH=/data/docker-butler.db
@@ -166,7 +160,7 @@ docker compose -f docker-compose.build.yml up -d --build
 | 提示 privileged 警告 | 管理其他容器需要特权模式，不能去掉 |
 | 忘记 admin 密码 | `docker compose down && rm -rf ./docker-butler-data && docker compose up -d`(清空配置，慎用) |
 | 面板如何升级 | 面板内「本服务」行点「检查更新」→ 有更新后点「更新自己」，自动完成升级 |
-| 项目详情读不到 YAML（如 1Panel 创建的项目） | 该宿主目录不在默认挂载范围内。docker butler 支持 `EXTRA_MOUNTS` 环境变量映射额外目录：compose 加挂载 `- /宿主机目录:/host/xxx` 并设 `EXTRA_MOUNTS=/宿主机目录:/host/xxx`。非 snap 环境直接挂；snap 版 Docker 因沙箱限制 `/opt` 等目录只读，需先宿主机执行 `mount --bind` 把目录绑到 `$HOME` 下再挂 |
+| 项目详情读不到 YAML（如 1Panel 创建的项目） | 原因：项目目录不在默认挂载范围内。解决：<br>1. compose 的 `volumes` 加一行挂载：`- /宿主机目录:/host/xxx`（如 `- /opt/1panel/docker/compose:/host/1panel-compose`）<br>2. `environment` 加一行：`EXTRA_MOUNTS=/宿主机目录:/host/xxx`（多个用分号：`/A:/host/a;/B:/host/b`）<br>3. `docker compose up -d` 重建即可。<br>⚠️ snap 版 Docker（Ubuntu 预装）沙箱限制 `/opt` 只读，需先在宿主机 `mount --bind /宿主机目录 /home/用户名/xxx` 把目录绑到 home 下，挂载和 EXTRA_MOUNTS 都用 home 路径 |
 | Snap 版 Docker（Ubuntu 预装）部署失败 | Snap Docker 跑在沙箱里，**只能读写 `$HOME` 目录**（`/opt`、`/var/lib` 只读）。compose 里的数据目录/项目目录必须放 home 下（如 `/home/用户名/docker-butler/`），且「更新自己」要求 compose 文件本身也在 home 下（不能放 `/opt/1panel/...` 之类），否则自更新报 `read-only file system` |
 
 ## 📄 License

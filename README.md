@@ -76,7 +76,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker-butler-data:/data    # 数据目录（本项目目录下，方便查看/备份）
       - /etc/docker/daemon.json:/etc/docker/daemon.json   # 镜像加速器设置（可读写，面板内配置）
-      # 下面两个挂载是给面板的"Compose 项目浏览/新建"功能用的（可选，不用可删）：
+      # 下面两个挂载是给面板的"Compose 项目浏览/新建"功能用的（可选，不用可删除）：
       - ${COMPOSE_ROOT:-/vol1/1000/Docker}:/host/compose   # 宿主机 Docker 项目目录
       - ${COMPOSE_VOLUME_ROOT:-/vol1}:/host-vol1           # 宿主机存储根目录
       # 想让面板读取默认范围外的 Compose 项目（如 1Panel 的 /opt/1panel/docker/compose）？
